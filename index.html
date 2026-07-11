@@ -1,39 +1,93 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <title>ระบบแจ้งการทำธุรกรรม สหกรณ์ออมทรัพย์กรมวิชาการเกษตร จำกัด</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- ป้องกันปัญหาหน้าเว็บถูกฝังใน iframe ซ้อนกัน -->
-    <base target="_top">
-    <style>
-        /* ลบ margin/padding พื้นฐานของเบราว์เซอร์ เพื่อให้ iframe เต็มจอ 100% */
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* ป้องกันการมีแถบเลื่อนซ้อนกัน */
-            background-color: #f3f4f6; /* สีพื้นหลังระหว่างรอโหลด */
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>E-Services สอ.กวก.</title>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Sarabun", sans-serif;
+      background: linear-gradient(135deg, #0F5D73, #1A7A96);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    .loading-box { text-align: center; padding: 40px; }
+    .spinner {
+      width: 50px; height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .logo { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { font-size: 16px; opacity: 0.9; margin-bottom: 30px; }
+    .status { font-size: 14px; opacity: 0.8; }
+    .error-box {
+      display: none;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-    <script>
-        // อ่านค่าเลขสมาชิกที่ส่งมาจาก LINE Bot
-        const urlParams = new URLSearchParams(window.location.search);
-        const memberNo = urlParams.get('member_no');
-        
-        // Base URL ของ Google Apps Script ของคุณ
-        let gasUrl = "https://script.google.com/macros/s/AKfycbzYm1dytsZ00887S6smqjbIOucvOcZa-KqLvDfxrFzniALTog3Q581Lb7mSnoJSlVmk/exec";
-        
-        // ถ้ามีเลขสมาชิก ให้แนบต่อท้าย URL เพื่อให้ GAS ดึงไปกรอกอัตโนมัติ
-        if (memberNo) {
-            gasUrl += "?member_no=" + encodeURIComponent(memberNo);
+  <div class="loading-box">
+    <div class="logo">สอ.กวก.</div>
+    <div class="subtitle">E-Services ระบบออนไลน์</div>
+    <div class="spinner" id="spinner"></div>
+    <div class="status" id="status">กำลังเชื่อมต่อ LINE...</div>
+    <div class="error-box" id="error-box"></div>
+  </div>
+
+  <script>
+    var LIFF_ID = "2010640180-9mfVqp1M";
+    var GAS_URL = "https://script.google.com/macros/s/AKfycbzYm1dytsZ00887S6smqjbIOucvOcZa-KqLvDfxrFzniALTog3Q581Lb7mSnoJSlVmk/exec";
+
+    function setStatus(msg) {
+      document.getElementById("status").textContent = msg;
+    }
+
+    function showError(msg) {
+      document.getElementById("spinner").style.display = "none";
+      var errBox = document.getElementById("error-box");
+      errBox.style.display = "block";
+      errBox.textContent = msg;
+    }
+
+    async function initLiff() {
+      try {
+        setStatus("กำลังเชื่อมต่อ LINE...");
+        await liff.init({ liffId: LIFF_ID });
+
+        if (!liff.isLoggedIn()) {
+          setStatus("กำลังเข้าสู่ระบบ LINE...");
+          liff.login({ redirectUri: window.location.href });
+          return;
         }
-        
-        // สร้าง Iframe เพื่อโหลดหน้าเว็บ
-        document.write('<iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" src="' + gasUrl + '" allowfullscreen="true"></iframe>');
-    </script>
+
+        setStatus("กำลังโหลดข้อมูลสมาชิก...");
+        var profile = await liff.getProfile();
+        var lineId = profile.userId;
+
+        setStatus("กำลังเข้าสู่ระบบ...");
+        window.location.href = GAS_URL + "?line_id=" + encodeURIComponent(lineId);
+
+      } catch (err) {
+        console.error("LIFF Error:", err);
+        showError("เกิดข้อผิดพลาด: " + err.message);
+      }
+    }
+
+    initLiff();
+  </script>
 </body>
 </html>
