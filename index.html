@@ -43,40 +43,54 @@
     <div class="logo">สอ.กวก.</div>
     <div class="subtitle">แจ้งการทำธุรกรรมออนไลน์</div>
     <div class="spinner" id="spinner"></div>
-    <div class="status" id="status">กำลังเชื่อมต่อ LINE...</div>
+    <div class="status" id="status">กำลังเชื่อมต่อระบบ...</div>
   </div>
 
-  <!-- แสดง GAS ในกรอบ iframe เพื่อให้อยู่ที่โดเมน doacoop-it.github.io -->
   <iframe id="gas-frame" allow="geolocation; microphone; camera"></iframe>
 
   <script>
     var LIFF_ID = "2010640180-9mfVqp1M";
-    var GAS_URL = "https://script.google.com/macros/s/AKfycby26XHYIAV6iNcv1UzGR9oQ6g41KocnEVwLatRpAWgdfjdCxvFl6LFSQLwToey3X6wH/exec";
+    var GAS_URL = "https://script.google.com/macros/s/AKfycbzYm1dytsZ00887S6smqjbIOucvOcZa-KqLvDfxrFzniALTog3Q581Lb7mSnoJSlVmk/exec";
 
     async function initLiff() {
       try {
-        document.getElementById("status").textContent = "กำลังเชื่อมต่อ LINE...";
-        await liff.init({ liffId: LIFF_ID });
-
-        if (!liff.isLoggedIn()) {
-          liff.login({ redirectUri: window.location.href });
-          return;
-        }
-
-        var profile = await liff.getProfile();
-        var lineId = profile.userId;
-
-        // รับค่า member_no จาก URL ที่ E-Services ส่งมา
-               var urlParams = new URLSearchParams(window.location.search);
+        var urlParams = new URLSearchParams(window.location.search);
         var memberNo = urlParams.get("member_no") || urlParams.get("memberNo") || urlParams.get("memberId") || "";
+        var lineId = urlParams.get("line_id") || urlParams.get("lineId") || "";
 
-        var targetUrl = GAS_URL + "?line_id=" + encodeURIComponent(lineId);
-        if (memberNo) {
-          // ส่งทั้ง member_no และ memberId
-          targetUrl += "&member_no=" + encodeURIComponent(memberNo) + "&memberId=" + encodeURIComponent(memberNo);
+        try {
+          document.getElementById("status").textContent = "กำลังตรวจสอบการเชื่อมต่อ...";
+          await liff.init({ liffId: LIFF_ID });
+
+          // ตรวจสอบว่าเปิดในแอป LINE (Client) หรือเปิดบนเว็บทั่วไป
+          if (liff.isInClient() || liff.isLoggedIn()) {
+            if (!liff.isLoggedIn() && liff.isInClient()) {
+              liff.login({ redirectUri: window.location.href });
+              return;
+            }
+            if (liff.isLoggedIn()) {
+              var profile = await liff.getProfile();
+              lineId = profile.userId || lineId;
+            }
+          }
+          // หมายเหตุ: หากเปิดบนคอมหรือเบราว์เซอร์นอก LINE (!liff.isInClient() && !liff.isLoggedIn())
+          // จะข้ามการเรียก liff.login() เพื่อไม่ให้เด้งไปหน้าล็อกอิน LINE ครับ
+        } catch (liffErr) {
+          console.warn("LIFF init warning (Running outside LINE):", liffErr);
         }
 
-        // ใช้ iframe.src แทน window.location.href
+        document.getElementById("status").textContent = "กำลังเปิดระบบทำธุรกรรม...";
+        var targetUrl = GAS_URL;
+        var params = [];
+        if (lineId) params.push("line_id=" + encodeURIComponent(lineId));
+        if (memberNo) {
+          params.push("member_no=" + encodeURIComponent(memberNo));
+          params.push("memberId=" + encodeURIComponent(memberNo));
+        }
+        if (params.length > 0) {
+          targetUrl += "?" + params.join("&");
+        }
+
         var frame = document.getElementById("gas-frame");
         frame.onload = function() {
           document.getElementById("loading-box").style.display = "none";
@@ -85,7 +99,8 @@
         frame.src = targetUrl;
 
       } catch (err) {
-        console.error("LIFF Error:", err);
+        console.error("System Error:", err);
+        document.getElementById("status").textContent = "เกิดข้อผิดพลาดในการโหลดระบบ";
       }
     }
 
