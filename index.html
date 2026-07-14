@@ -3,20 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>E-Services สอ.กวก.</title>
+  <title>แจ้งการทำธุรกรรม สอ.กวก.</title>
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
+    body, html {
       font-family: "Sarabun", sans-serif;
-      background: linear-gradient(135deg, #0F5D73, #1A7A96);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #0F5D73;
     }
-    .loading-box { text-align: center; padding: 40px; }
+    .loading-box {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(135deg, #0F5D73, #1A7A96);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: white; z-index: 10;
+    }
     .spinner {
       width: 50px; height: 50px;
       border: 4px solid rgba(255,255,255,0.3);
@@ -29,74 +32,63 @@
     .logo { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
     .subtitle { font-size: 16px; opacity: 0.9; margin-bottom: 30px; }
     .status { font-size: 14px; opacity: 0.8; }
-    .error-box {
-      display: none;
-      background: rgba(255,255,255,0.15);
-      border-radius: 12px;
-      padding: 20px;
-      margin-top: 20px;
-      font-size: 14px;
+    #gas-frame {
+      width: 100%; height: 100vh;
+      border: none; display: none;
     }
   </style>
 </head>
 <body>
-  <div class="loading-box">
+  <div class="loading-box" id="loading-box">
     <div class="logo">สอ.กวก.</div>
-    <div class="subtitle">E-Services ระบบออนไลน์</div>
+    <div class="subtitle">แจ้งการทำธุรกรรมออนไลน์</div>
     <div class="spinner" id="spinner"></div>
     <div class="status" id="status">กำลังเชื่อมต่อ LINE...</div>
-    <div class="error-box" id="error-box"></div>
   </div>
 
-   <script>
+  <!-- แสดง GAS ในกรอบ iframe เพื่อให้อยู่ที่โดเมน doacoop-it.github.io -->
+  <iframe id="gas-frame" allow="geolocation; microphone; camera"></iframe>
+
+  <script>
     var LIFF_ID = "2010640180-9mfVqp1M";
     var GAS_URL = "https://script.google.com/macros/s/AKfycbzYm1dytsZ00887S6smqjbIOucvOcZa-KqLvDfxrFzniALTog3Q581Lb7mSnoJSlVmk/exec";
 
-    function setStatus(msg) {
-      document.getElementById("status").textContent = msg;
-    }
-
-    function showError(msg) {
-      document.getElementById("spinner").style.display = "none";
-      var errBox = document.getElementById("error-box");
-      errBox.style.display = "block";
-      errBox.textContent = msg;
-    }
-
     async function initLiff() {
       try {
-        setStatus("กำลังเชื่อมต่อ LINE...");
+        document.getElementById("status").textContent = "กำลังเชื่อมต่อ LINE...";
         await liff.init({ liffId: LIFF_ID });
 
         if (!liff.isLoggedIn()) {
-          setStatus("กำลังเข้าสู่ระบบ LINE...");
           liff.login({ redirectUri: window.location.href });
           return;
         }
 
-        setStatus("กำลังโหลดข้อมูลสมาชิก...");
         var profile = await liff.getProfile();
         var lineId = profile.userId;
 
-        // รับค่า member_no จาก URL parameter (ที่ส่งมาจาก E-Services)
+        // รับค่า member_no จาก URL ที่ E-Services ส่งมา
         var urlParams = new URLSearchParams(window.location.search);
         var memberNo = urlParams.get("member_no") || urlParams.get("memberNo") || "";
 
-        setStatus("กำลังเข้าสู่ระบบ...");
-        var redirectUrl = GAS_URL + "?line_id=" + encodeURIComponent(lineId);
+        document.getElementById("status").textContent = "กำลังเปิดระบบทำธุรกรรม...";
+        var targetUrl = GAS_URL + "?line_id=" + encodeURIComponent(lineId);
         if (memberNo) {
-          redirectUrl += "&member_no=" + encodeURIComponent(memberNo);
+          targetUrl += "&member_no=" + encodeURIComponent(memberNo);
         }
-        window.location.href = redirectUrl;
+
+        // ใช้ iframe.src แทน window.location.href
+        var frame = document.getElementById("gas-frame");
+        frame.onload = function() {
+          document.getElementById("loading-box").style.display = "none";
+          frame.style.display = "block";
+        };
+        frame.src = targetUrl;
 
       } catch (err) {
         console.error("LIFF Error:", err);
-        showError("เกิดข้อผิดพลาด: " + err.message);
       }
     }
 
-    initLiff();
-  </script>
     initLiff();
   </script>
 </body>
