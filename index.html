@@ -48,7 +48,7 @@
     <div class="error-box" id="error-box"></div>
   </div>
 
-  <script>
+   <script>
     var LIFF_ID = "2010640180-9mfVqp1M";
     var GAS_URL = "https://script.google.com/macros/s/AKfycbzYm1dytsZ00887S6smqjbIOucvOcZa-KqLvDfxrFzniALTog3Q581Lb7mSnoJSlVmk/exec";
 
@@ -78,8 +78,16 @@
         var profile = await liff.getProfile();
         var lineId = profile.userId;
 
+        // รับค่า member_no จาก URL parameter (ที่ส่งมาจาก E-Services)
+        var urlParams = new URLSearchParams(window.location.search);
+        var memberNo = urlParams.get("member_no") || urlParams.get("memberNo") || "";
+
         setStatus("กำลังเข้าสู่ระบบ...");
-        window.location.href = GAS_URL + "?line_id=" + encodeURIComponent(lineId);
+        var redirectUrl = GAS_URL + "?line_id=" + encodeURIComponent(lineId);
+        if (memberNo) {
+          redirectUrl += "&member_no=" + encodeURIComponent(memberNo);
+        }
+        window.location.href = redirectUrl;
 
       } catch (err) {
         console.error("LIFF Error:", err);
@@ -87,6 +95,8 @@
       }
     }
 
+    initLiff();
+  </script>
     initLiff();
   </script>
 </body>
